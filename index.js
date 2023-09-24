@@ -74,7 +74,13 @@ function configureLocalStorage() {
   }
 }
 
+var lastCompilation;
+
 function generate() {
+  const generateButton = document.getElementById('generate');
+  generateButton.disabled = true;
+  generateButton.textContent = 'Generating...';
+
   const source = document.getElementById('source').value;
 
   const options = {
@@ -88,26 +94,29 @@ function generate() {
     ? languages
     : [languages.find(x => x.name == languageName)];
 
-  const compilationResults = compile(source, options, ...generatedLanguages);
+  // Forces browser to redraw generateButton
+  // TODO: use Web Workers?
+  setTimeout(() => {
+    const results = compile(source, options, ...generatedLanguages);
+    lastCompilation = { results, source };
 
-  console.log(compilationResults);
-  renderTabs(compilationResults, source);
+    console.log(results);
+    renderTabs();
+
+    generateButton.disabled = false;
+    generateButton.textContent = 'Generate';
+  }, 1);
 }
 
-function renderTabs(compilationResults, source) {
+function renderTabs() {
   const resultTabs = document.getElementById('resultTabs');
   resultTabs.innerHTML = '';
 
   let first = true;
 
-  for (const compilationResult of compilationResults) {
+  for (const compilationResult of lastCompilation.results) {
     const language = compilationResult.language;
     const result = compilationResult.result;
-
-    if (typeof result !== 'string') {
-      result.length = 'Error';
-      result.sourceCode = source;
-    }
 
     const li = document.createElement('li');
     li.className = 'nav-item';
@@ -117,7 +126,7 @@ function renderTabs(compilationResults, source) {
     if (first)
       button.classList.add('active');
     button.textContent = language;
-    button.innerHTML += ` <sup>${result.length}</sup>`;
+    button.innerHTML += ` <sup>${typeof result === 'string' ? result.length : 'Error'}</sup>`;
     button.type = 'button';
     button.setAttribute('data-bs-toggle', 'tab');
 
@@ -134,6 +143,7 @@ function renderTabs(compilationResults, source) {
 
 function renderResult(compilationResult) {
   let result = compilationResult.result;
+  // TODO: show warnings and history
   // const warnings = compilationResult.warnings; // Error[]
   // const history = compilationResult.history; // [number, string][]
 
@@ -147,7 +157,7 @@ function renderResult(compilationResult) {
     if (location !== null) {
       const startLine = location.line === 0 ? 0 : location.line - 2;
       output += "\n\n" +
-        result.sourceCode
+        lastCompilation.source
           .split("\n")
           .slice(startLine, location.line)
           .map((x, i) => `${startLine + i + 1}`.padStart(3, " ") + " " + x)
@@ -166,6 +176,46 @@ function setSource(value) {
   const source = document.getElementById('source');
   source.value = value;
   source.oninput();
+}
+
+function groupBy(sequence, keyFn) {
+  const map = new Map();
+  for (const item of sequence) {
+    const key = keyFn(item);
+    if (!map.has(key)) {
+      map.set(key, [item]);
+    } else {
+      map.get(key).push(item);
+    }
+  }
+  return map;
+}
+
+function download() {
+  if (!lastCompilation) {
+    console.log('Nothing to download');
+    return;
+  }
+
+  const compilationResults = lastCompilation.results
+    .filter(compilationResult => typeof compilationResult.result === 'string');
+  if (compilationResults.length === 0) {
+    console.log('Nothing to download');
+    return;
+  }
+
+  const zip = new JSZip();
+  zip.file('!source.polygolf', lastCompilation.source);
+  groupBy(compilationResults, x => x.language).forEach((results, languageName) => {
+    const language = languages.find(x => x.name == languageName);
+    results.forEach((compilationResult, idx) => {
+      const name = `${languageName}${results.length === 1 ? '' : " #" + (idx + 1)}.${language.extension}`;
+      zip.file(name, compilationResult.result);
+    });
+  });
+
+  zip.generateAsync({ type: "blob", compression: "DEFLATE" })
+    .then(blob => saveAs(blob, "PolyGolf.zip"));
 }
 
 function getFibonacci() {
