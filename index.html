@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Polygolf</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+    crossorigin="anonymous"></script>
+  <script src="polygolf.js"></script>
+  <script src="index.js"></script>
+</head>
+
+<body>
+  <div class="container-fluid">
+    <select id="themeSelect" class="form-select" style="position: absolute; top: .75rem; right: .75rem; width: auto;">
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+    </select>
+    <div class="row">
+      <h3>Polygolf Web</h3>
+      <p>Generates solutions for <a href="https://code.golf">code.golf</a> using the PolyGolf project
+        (<a href="https://github.com/jared-hughes/polygolf">GitHub</a>).</p>
+    </div>
+    <div class="row mb-3">
+      <div class="dropdown col-12">
+        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+          Insert sample
+        </button>
+        <ul class="dropdown-menu">
+          <li><button class="dropdown-item" type="button" onclick="setSource(getFibonacci());">Fibonacci</a></li>
+          <li><button class="dropdown-item" type="button" onclick="setSource(getChristmas());">12 Days of Christmas</a>
+          </li>
+          <li><button class="dropdown-item" type="button" onclick="setSource(getCodeGolfTemplate());">code.golf
+              template</a></li>
+          <li><button class="dropdown-item" type="button" onclick="setSource('');">Clear</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="row mb-3">
+      <div class="col-12">
+        <textarea id="source" class="form-control" rows="15" spellcheck="false" style="font-family: monospace;">
+        </textarea>
+      </div>
+    </div>
+    <div class="row mb-3 row-cols-lg-auto g-3 align-items-center">
+      <div class="col-12">
+        <select id="languageSelect" class="form-select col">
+          <option value="all">All languages</option>
+        </select>
+      </div>
+      <div class="col-12">
+        <select id="objectiveSelect" class="form-select col">
+          <option value="bytes">Bytes</option>
+          <option value="chars">Chars</option>
+        </select>
+      </div>
+      <div class="col-12">
+        <div class="form-check">
+          <input id="getAllVariantsCheckBox" class="form-check-input" type="checkbox" />
+          <label class="form-check-label" for="getAllVariantsCheckBox">Generate all variants</label>
+        </div>
+      </div>
+      <div class="col-12">
+        <button class="btn btn-primary col" onclick="generate();">Generate</button>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-12">
+        <ul class="nav nav-tabs" id="resultTabs">
+          <li class="nav-item">
+            <button class="nav-link active" id="home-tab" data-bs-toggle="tab" type="button">No result</button>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-12">
+        <textarea id="result" class="form-control" rows="10" readonly
+          style="width:100%; box-sizing: border-box; font-family: monospace;">
+      </textarea>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>
