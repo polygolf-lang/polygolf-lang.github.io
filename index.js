@@ -75,6 +75,7 @@ function configureLocalStorage() {
 }
 
 var lastCompilation;
+const FATAL_ERROR = 'Fatal error';
 
 function generate() {
   const generateButton = document.getElementById('generate');
@@ -97,8 +98,13 @@ function generate() {
   // Forces browser to redraw generateButton
   // TODO: use Web Workers?
   setTimeout(() => {
-    const results = compile(source, options, ...generatedLanguages);
-    lastCompilation = { results, source };
+    let results;
+    try {
+      results = compile(source, options, ...generatedLanguages);
+    } catch (e) {
+      results = [{ language: FATAL_ERROR, result: e }];
+    }
+    lastCompilation = { results, source, options };
 
     console.log(results);
     renderTabs();
@@ -114,6 +120,8 @@ function renderTabs() {
 
   let first = true;
 
+  const objectiveFunc = getObjectiveFunc(lastCompilation.options);
+
   for (const compilationResult of lastCompilation.results) {
     const language = compilationResult.language;
     const result = compilationResult.result;
@@ -126,7 +134,9 @@ function renderTabs() {
     if (first)
       button.classList.add('active');
     button.textContent = language;
-    button.innerHTML += ` <sup>${typeof result === 'string' ? result.length : 'Error'}</sup>`;
+    if (language !== FATAL_ERROR) {
+      button.innerHTML += ` <sup>${typeof result === 'string' ? objectiveFunc(result) : 'Error'}</sup>`;
+    }
     button.type = 'button';
     button.setAttribute('data-bs-toggle', 'tab');
 
@@ -142,30 +152,40 @@ function renderTabs() {
 }
 
 function renderResult(compilationResult) {
-  let result = compilationResult.result;
   // TODO: show warnings and history
-  // const warnings = compilationResult.warnings; // Error[]
-  // const history = compilationResult.history; // [number, string][]
 
-  if (compilationResult.warnings.length !== 0) {
-    console.log(compilationResult.warnings);
+  const warnings = compilationResult.warnings; // Error[]
+  if (warnings != null && warnings.length !== 0) {
+    console.log(warnings);
   }
 
-  if (typeof result !== 'string') { // PolygolfError
+  // const history = compilationResult.history; // [number, string][]
+
+  let result = compilationResult.result;
+  if (typeof result !== 'string') { 
     let output = result.toString();
-    const location = result.source;
-    if (location !== null) {
-      const startLine = location.line === 0 ? 0 : location.line - 2;
-      output += "\n\n" +
-        lastCompilation.source
-          .split("\n")
-          .slice(startLine, location.line)
-          .map((x, i) => `${startLine + i + 1}`.padStart(3, " ") + " " + x)
-          .join("\n") +
-        "\n" +
-        " ".repeat(location.column + 3) +
-        "^";
+
+    if (compilationResult.language == FATAL_ERROR) { // Fatal error
+      const stack = result.stack;
+      if (stack != null) {
+        output += '\n\n' + stack;
+      }
+    } else { // PolygolfError
+      const location = result.source;
+      if (location !== null) {
+        const startLine = location.line === 0 ? 0 : location.line - 2;
+        output += '\n\n' +
+          lastCompilation.source
+            .split('\n')
+            .slice(startLine, location.line)
+            .map((x, i) => `${startLine + i + 1}`.padStart(3, ' ') + ' ' + x)
+            .join('\n') +
+          '\n' +
+          ' '.repeat(location.column + 3) +
+          '^';
+      }      
     }
+
     result = output;
   }
 
@@ -209,13 +229,13 @@ function download() {
   groupBy(compilationResults, x => x.language).forEach((results, languageName) => {
     const language = languages.find(x => x.name == languageName);
     results.forEach((compilationResult, idx) => {
-      const name = `${languageName}${results.length === 1 ? '' : " #" + (idx + 1)}.${language.extension}`;
+      const name = `${languageName}${results.length === 1 ? '' : ' #' + (idx + 1)}.${language.extension}`;
       zip.file(name, compilationResult.result);
     });
   });
 
-  zip.generateAsync({ type: "blob", compression: "DEFLATE" })
-    .then(blob => saveAs(blob, "PolyGolf.zip"));
+  zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })
+    .then(blob => saveAs(blob, 'PolyGolf.zip'));
 }
 
 function getFibonacci() {

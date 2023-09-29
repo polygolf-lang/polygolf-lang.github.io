@@ -9460,13 +9460,23 @@ ${e instanceof Error ? e.message : ""}`
 
   // src/polygolf.ts
   globalThis.compile = compile;
+  globalThis.getObjectiveFunc = getObjectiveFunc;
   globalThis.languages = languages_default;
   globalThis.Buffer = {
-    byteLength(s, encoding) {
-      return new TextEncoder().encode(s).length;
-    },
     from(s, encoding) {
       return new TextEncoder().encode(s);
+    },
+    byteLength(s, encoding) {
+      let length = s.length;
+      for (let i = length - 1; i >= 0; i--) {
+        const code = s.charCodeAt(i);
+        if (code > 127) {
+          length += code > 2047 ? 2 : 1;
+          if (code >= 56320 && code <= 57343)
+            i--;
+        }
+      }
+      return length;
     }
   };
 })();
