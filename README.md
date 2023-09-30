@@ -22,7 +22,9 @@ globalThis.languages = languages;
 
 // Node.js polyfill
 globalThis.Buffer = {
-  from(s: string, encoding: string) { return new TextEncoder().encode(s); },
+  from(s: string, encoding: string) {
+    return new TextEncoder().encode(s);
+  },
   byteLength(s: string, encoding: string) {
     // return new TextEncoder().encode(s).length;
     let length = s.length;

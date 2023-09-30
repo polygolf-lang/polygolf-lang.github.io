@@ -11,6 +11,15 @@
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js "></script>
   <script src="polygolf.js"></script>
   <script src="index.js"></script>
+  <style>
+    textarea {
+      font-family: monospace;
+    }
+
+    .btn-outline-secondary {
+      color: var(--bs-body-color);
+    }
+  </style>
 </head>
 
 <body>
@@ -26,8 +35,8 @@
     </div>
     <div class="row mb-3">
       <div class="dropdown col-12">
-        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown"
-          style="color: var(--bs-body-color);">Insert sample </button>
+        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">Insert sample
+        </button>
         <ul class="dropdown-menu">
           <li><button class="dropdown-item" type="button" onclick="setSource(getFibonacci());">
               Fibonacci</button></li>
@@ -42,8 +51,7 @@
     </div>
     <div class="row mb-3">
       <div class="col-12">
-        <textarea id="source" class="form-control" rows="15" spellcheck="false" style="font-family: monospace;">
-        </textarea>
+        <textarea id="source" class="form-control" rows="15" spellcheck="false"></textarea>
       </div>
     </div>
     <div class="row mb-3 row-cols-md-auto g-3 align-items-center">
@@ -68,8 +76,7 @@
         <button class="btn btn-primary col" id="generate" onclick="generate();">Generate</button>
       </div>
       <div class="col-12">
-        <button class="btn btn-outline-secondary col" onclick="download();"
-          style="color: var(--bs-body-color);">Download all</button>
+        <button class="btn btn-outline-secondary col" onclick="download();">Download all</button>
       </div>
     </div>
     <div class="row">
@@ -83,7 +90,7 @@
     </div>
     <div class="row">
       <div class="col-12">
-        <textarea id="result" class="form-control" rows="10" autocomplete="off" readonly style="font-family: monospace;"></textarea>
+        <textarea id="result" class="form-control" rows="10" autocomplete="off" readonly></textarea>
       </div>
     </div>
   </div>

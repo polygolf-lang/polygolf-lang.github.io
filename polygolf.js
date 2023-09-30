@@ -5799,7 +5799,7 @@ ${e instanceof Error ? e.message : ""}`
         try {
           const length = obj(finish(program3, addWarning3, startPhase)[0]);
           const state = { program: program3, startPhase, length, history, warnings };
-          if (length < shortestSoFarLength) {
+          if (shortestSoFar === void 0 || length < shortestSoFarLength) {
             shortestSoFarLength = length;
             shortestSoFar = state;
           }
