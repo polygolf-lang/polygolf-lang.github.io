@@ -1,10 +1,23 @@
-window.onload = () => {
-  const languageSelect = document.getElementById('languageSelect')
-  for (const language of languages) {
-    languageSelect.add(new Option(language.name));
-  }
+let worker;
+let languages;
 
-  configureLocalStorage();
+window.onload = () => {
+  worker = new Worker("worker.js");
+
+  worker.onmessage = (e) => {
+    languages = e.data.languages;
+
+    const languageSelect = document.getElementById('languageSelect');
+    for (const language of languages) {
+      languageSelect.add(new Option(language));
+    }
+
+    configureLocalStorage();
+
+    worker.onmessage = (e) => {
+      renderTabs(e.data);
+    };
+  }
 }
 
 function getTheme() {
@@ -74,9 +87,6 @@ function configureLocalStorage() {
   }
 }
 
-var lastCompilation;
-const FATAL_ERROR = 'Fatal error';
-
 function generate() {
   const generateButton = document.getElementById('generate');
   generateButton.disabled = true;
@@ -91,41 +101,24 @@ function generate() {
   };
 
   const languageName = document.getElementById('languageSelect').value;
-  const generatedLanguages = languageName === 'all'
-    ? languages
-    : [languages.find(x => x.name == languageName)];
+  const generatedLanguages = languageName === 'all' ? languages : [languageName];
 
-  // Forces browser to redraw generateButton
-  // TODO: use Web Workers?
-  setTimeout(() => {
-    let results;
-    try {
-      results = compile(source, options, ...generatedLanguages);
-    } catch (e) {
-      results = [{ language: FATAL_ERROR, result: e }];
-    }
-    lastCompilation = { results, source, options };
-
-    console.log(results);
-    renderTabs();
-
-    generateButton.disabled = false;
-    generateButton.textContent = 'Generate';
-  }, 1);
+  worker.postMessage({ source, options, generatedLanguages });
 }
 
-function renderTabs() {
+let lastCompilationResults;
+
+function renderTabs(results) {
+
+  console.log(results);
+  lastCompilationResults = results;
+
   const resultTabs = document.getElementById('resultTabs');
   resultTabs.innerHTML = '';
 
   let first = true;
 
-  const objectiveFunc = getObjectiveFunc(lastCompilation.options);
-
-  for (const compilationResult of lastCompilation.results) {
-    const language = compilationResult.language;
-    const result = compilationResult.result;
-
+  for (const compilationResult of results.results) {
     const li = document.createElement('li');
     li.className = 'nav-item';
 
@@ -133,9 +126,9 @@ function renderTabs() {
     button.className = 'nav-link';
     if (first)
       button.classList.add('active');
-    button.textContent = language;
-    if (language !== FATAL_ERROR) {
-      button.innerHTML += ` <sup>${typeof result === 'string' ? objectiveFunc(result) : 'Error'}</sup>`;
+    button.textContent = compilationResult.language ?? 'Fatal error';
+    if (compilationResult.length !== undefined) {
+      button.innerHTML += ` <sup>${compilationResult.length}</sup>`;
     }
     button.type = 'button';
     button.setAttribute('data-bs-toggle', 'tab');
@@ -149,6 +142,10 @@ function renderTabs() {
 
     first = false;
   }
+
+  const generateButton = document.getElementById('generate');
+  generateButton.disabled = false;
+  generateButton.textContent = 'Generate';
 }
 
 function renderResult(compilationResult) {
@@ -162,20 +159,20 @@ function renderResult(compilationResult) {
   // const history = compilationResult.history; // [number, string][]
 
   let result = compilationResult.result;
-  if (typeof result !== 'string') { 
+  if (typeof result !== 'string') {
     let output = result.toString();
 
-    if (compilationResult.language == FATAL_ERROR) { // Fatal error
+    if (compilationResult.language === undefined) { // Fatal error
       const stack = result.stack;
       if (stack != null) {
         output += '\n\n' + stack;
       }
     } else { // PolygolfError
-      const location = result.source;
+      const location = compilationResult.location;
       if (location !== null) {
         const startLine = location.line === 0 ? 0 : location.line - 2;
         output += '\n\n' +
-          lastCompilation.source
+          lastCompilationResults.source
             .split('\n')
             .slice(startLine, location.line)
             .map((x, i) => `${startLine + i + 1}`.padStart(3, ' ') + ' ' + x)
@@ -183,7 +180,7 @@ function renderResult(compilationResult) {
           '\n' +
           ' '.repeat(location.column + 3) +
           '^';
-      }      
+      }
     }
 
     result = output;
@@ -212,12 +209,12 @@ function groupBy(sequence, keyFn) {
 }
 
 function download() {
-  if (!lastCompilation) {
+  if (!lastCompilationResults) {
     console.log('Nothing to download');
     return;
   }
 
-  const compilationResults = lastCompilation.results
+  const compilationResults = lastCompilationResults.results
     .filter(compilationResult => typeof compilationResult.result === 'string');
   if (compilationResults.length === 0) {
     console.log('Nothing to download');
@@ -225,11 +222,10 @@ function download() {
   }
 
   const zip = new JSZip();
-  zip.file('!source.polygolf', lastCompilation.source);
+  zip.file('!source.polygolf', lastCompilationResults.source);
   groupBy(compilationResults, x => x.language).forEach((results, languageName) => {
-    const language = languages.find(x => x.name == languageName);
     results.forEach((compilationResult, idx) => {
-      const name = `${languageName}${results.length === 1 ? '' : ' #' + (idx + 1)}.${language.extension}`;
+      const name = `${languageName}${results.length === 1 ? '' : ' #' + (idx + 1)}.${compilationResult.extension}`;
       zip.file(name, compilationResult.result);
     });
   });
