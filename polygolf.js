@@ -2785,7 +2785,7 @@
     let len = 0;
     while (i < str.length) {
       const value = str.charCodeAt(i++);
-      if (value >= 55296 && value <= 56319 && i < str.length) {
+      if (55296 <= value && value <= 56319 && i < str.length) {
         const extra = str.charCodeAt(i++);
         if ((extra & 64512) === 56320) {
           len++;
@@ -3843,7 +3843,8 @@
     }
     if (isBinary(op) && args.length === 2) {
       const combined = evalBinaryOp(op, args[0], args[1]);
-      if (combined !== null) {
+      if (combined !== null && (!isIntLiteral(combined) || op !== "pow" || // only eval pow if it is a low number
+      combined.value < 1e3 && combined.value > -1e3)) {
         return combined;
       }
     }
@@ -4112,6 +4113,9 @@
   function int(value) {
     return { kind: "IntegerLiteral", value: BigInt(value) };
   }
+  function anyInt(low, high) {
+    return { kind: "AnyIntegerLiteral", low, high };
+  }
   function text(value) {
     return { kind: "TextLiteral", value };
   }
@@ -4248,6 +4252,9 @@
       },
       [args[0], args[0]]
     );
+  }
+  function annotate(expr, type3) {
+    return { ...expr, type: type3 };
   }
   function toString(a) {
     switch (a.kind) {
@@ -4503,11 +4510,19 @@ ${e instanceof Error ? e.message : ""}`
     };
   }
 
-  // src/common/immutable.ts
+  // src/common/arrays.ts
   function replaceAtIndex(arr, index, ...insert) {
     const a = [...arr];
     a.splice(index, 1, ...insert);
     return a;
+  }
+  function filterInplace(data, predicate) {
+    let length = 0;
+    for (const item of data) {
+      if (predicate(item))
+        data[length++] = item;
+    }
+    data.length = length;
   }
 
   // src/common/Spine.ts
@@ -4661,7 +4676,7 @@ ${e instanceof Error ? e.message : ""}`
   // src/frontend/lexer.ts
   var import_moo = __toESM(require_moo());
   var tokenTable = {
-    integer: /-?[0-9]+/,
+    integer: /0|-?[1-9]\d*(?:[eE][1-9]\d*)?|-?0x[1-9a-fA-F][\da-fA-F]*|-?0b1[01]*/,
     string: /"(?:\\.|[^"])*"/,
     variable: /\$\w+/,
     type: /[A-Z][a-z]*/,
@@ -4729,7 +4744,7 @@ ${e instanceof Error ? e.message : ""}`
       { "name": "expr$ebnf$1$subexpression$1", "symbols": [{ "literal": ":" }, "type_expr"] },
       { "name": "expr$ebnf$1", "symbols": ["expr$ebnf$1$subexpression$1"], "postprocess": id2 },
       { "name": "expr$ebnf$1", "symbols": [], "postprocess": () => null },
-      { "name": "expr", "symbols": ["expr_inner", "expr$ebnf$1"], "postprocess": ([expr, type3]) => annotate(expr, type3) },
+      { "name": "expr", "symbols": ["expr_inner", "expr$ebnf$1"], "postprocess": ([expr, type3]) => annotate2(expr, type3) },
       { "name": "expr", "symbols": ["variants"], "postprocess": id2 },
       { "name": "expr_inner", "symbols": ["integer"], "postprocess": id2 },
       { "name": "expr_inner", "symbols": ["string"], "postprocess": id2 },
@@ -4747,7 +4762,7 @@ ${e instanceof Error ? e.message : ""}`
       { "name": "callee", "symbols": ["builtin"], "postprocess": id2 },
       { "name": "callee", "symbols": ["opalias"], "postprocess": id2 },
       { "name": "callee", "symbols": ["variable"], "postprocess": id2 },
-      { "name": "integer", "symbols": [lexer_default.has("integer") ? { type: "integer" } : integer], "postprocess": (d) => refSource(int(BigInt(d[0])), d[0]) },
+      { "name": "integer", "symbols": [lexer_default.has("integer") ? { type: "integer" } : integer], "postprocess": (d) => refSource(int2(d[0]), d[0]) },
       { "name": "variable", "symbols": [lexer_default.has("variable") ? { type: "variable" } : variable], "postprocess": (d) => refSource(userIdentifier(d[0]), d[0]) },
       { "name": "builtin$subexpression$1", "symbols": [lexer_default.has("builtin") ? { type: "builtin" } : builtin] },
       { "name": "builtin$subexpression$1", "symbols": [{ "literal": "argv_get" }] },
@@ -4913,6 +4928,13 @@ ${e instanceof Error ? e.message : ""}`
         const alternate = args[2];
         return ifStatement(condition, consequent, alternate);
       }
+      case "any_int": {
+        expectArity(2);
+        const [low, high] = args;
+        assertInteger(low);
+        assertInteger(high);
+        return anyInt(low.value, high.value);
+      }
     }
     if (!restrictedFrontend)
       switch (opCode) {
@@ -5061,6 +5083,17 @@ ${e instanceof Error ? e.message : ""}`
       callee.source
     );
   }
+  function intValue(x) {
+    if (x[0] === "-")
+      return -intValue(x.substring(1));
+    if (x[0] === "0")
+      return BigInt(x);
+    const parts = x.toString().split(/[eE]/);
+    return BigInt(parts[0]) * 10n ** BigInt(parts[1] ?? "0");
+  }
+  function int2(x) {
+    return int(intValue(x.text));
+  }
   var canonicalOpTable = {
     "+": "add",
     // neg, sub handled as special case in canonicalOp
@@ -5188,7 +5221,7 @@ ${e instanceof Error ? e.message : ""}`
         );
     }
   }
-  function annotate(expr, valueType) {
+  function annotate2(expr, valueType) {
     if (valueType === null)
       return expr;
     return { ...expr, type: valueType[1] };
@@ -5306,6 +5339,21 @@ ${e instanceof Error ? e.message : ""}`
       Object.setPrototypeOf(this, EmitError.prototype);
     }
   };
+  function shortest(x) {
+    return x.reduce((x2, y) => x2.length <= y.length ? x2 : y);
+  }
+  function emitIntLiteral(n, bases = { 10: ["", ""] }) {
+    if (-1e4 < n.value && n.value < 1e4)
+      return n.value.toString();
+    const isNegative2 = n.value < 0;
+    const abs2 = isNegative2 ? -n.value : n.value;
+    const absEmit = shortest(
+      Object.entries(bases).map(
+        ([b, [pre, suf]]) => `${pre}${abs2.toString(Number(b))}${suf}`
+      )
+    );
+    return isNegative2 ? `-${absEmit}` : absEmit;
+  }
 
   // src/languages/polygolf/emit.ts
   function emitProgram(program2) {
@@ -5568,6 +5616,8 @@ ${e instanceof Error ? e.message : ""}`
         );
       case "NamedArg":
         return emitSexpr("@", text(expr.name), expr.value);
+      case "AnyIntegerLiteral":
+        return emitSexpr("@", expr.low.toString(), expr.high.toString());
     }
   }
   var opAliases = {
@@ -5635,21 +5685,39 @@ ${e instanceof Error ? e.message : ""}`
     }
     return [result, counts];
   }
+  function getSingleOrUndefined(x) {
+    if (Array.isArray(x)) {
+      if (x.length > 1)
+        throw new Error(
+          `Programming error. Expected at most 1 item, but got ${JSON.stringify(
+            x
+          )}.`
+        );
+      return x[0];
+    }
+    return x;
+  }
+  function getArray(x) {
+    if (Array.isArray(x)) {
+      return x;
+    }
+    return x === void 0 ? [] : [x];
+  }
   function applyToAllAndGetCount(program2, context, visitor) {
     const result = programToSpine(program2).withReplacer((n, s) => {
-      const repl = visitor(n, s, context);
+      const repl = getSingleOrUndefined(visitor(n, s, context));
       return repl === void 0 ? void 0 : copySource(n, copyTypeAnnotation(n, repl));
     }).node;
     return [result, program2 === result ? 0 : 1];
   }
   function* applyToOne(spine, context, visitor) {
-    for (const altProgram of spine.compactMap((n, s) => {
-      const ret = visitor(n, s, context);
-      if (ret !== void 0) {
-        return s.replacedWith(copySource(n, copyTypeAnnotation(n, ret)), true).root.node;
-      }
+    for (const altPrograms of spine.compactMap((n, s) => {
+      const suggestions = getArray(visitor(n, s, context));
+      return suggestions.map(
+        (x) => s.replacedWith(copySource(n, copyTypeAnnotation(n, x)), true).root.node
+      );
     })) {
-      yield altProgram;
+      yield* altPrograms;
     }
   }
   function emit(language, program2, context) {
@@ -6249,7 +6317,7 @@ ${e instanceof Error ? e.message : ""}`
             ]
           ]);
         case "IntegerLiteral":
-          return [e.value.toString()];
+          return emitIntLiteral(e, { 10: ["", ""], 16: ["0x", ""] });
         case "FunctionCall":
           return [emit2(e.func), "(", joinExprs(",", e.args), ")"];
         case "MethodCall":
@@ -7027,7 +7095,7 @@ ${e instanceof Error ? e.message : ""}`
       visit(node) {
         if (isPolygolfOp(node, "pow")) {
           const [a, b] = node.args;
-          if (isIntLiteral(b) && b.value > 1 && b.value <= limit) {
+          if (isIntLiteral(b) && 1 < b.value && b.value <= limit) {
             return polygolfOp("mul", ...Array(Number(b.value)).fill(a));
           }
         }
@@ -7127,6 +7195,105 @@ ${e instanceof Error ? e.message : ""}`
     };
   }
   var bitShiftPlugins = [bitShiftToMulOrDiv(), mulOrDivToBitShift()];
+  function decomposeInt(n, hasScientific = false, hasPowers = true, hasShifts = true) {
+    return decomposeAnyInt(n, n, hasScientific, hasPowers, hasShifts);
+  }
+  function decomposeAnyInt(x, y, hasScientific = false, hasPowers = true, hasShifts = true) {
+    return x > 0 ? _decomposeAnyInt(x, y, hasScientific, hasPowers, hasShifts) : _decomposeAnyInt(-y, -x, hasScientific, hasPowers, hasShifts).map(
+      ([k, b, e, d, c]) => [-k, b, e, -d, c]
+    );
+  }
+  function lg(n) {
+    if (n < 0)
+      n = -n;
+    return n > 1e12 ? 2 + n.toString(16).length : n > 99 ? n.toString().length : n > 9 ? 2 : 1;
+  }
+  function ceilDiv(a, b) {
+    return (a + (b - 1n)) / b;
+  }
+  function _decomposeAnyInt(x, y, hasScientific = false, hasPowers = true, hasShifts = true) {
+    function betterOrEqual([k1, b1, e1, d1, c1], [k2, b2, e2, d2, c2]) {
+      return (!hasShifts || b1 === 2n || b2 !== 2n) && (!hasScientific || b1 === 10n || b2 !== 10n) && (k1 === 1n || k2 !== 1n) && (d1 === 0n || d2 !== 0n) && c1 <= c2;
+    }
+    const xd = x - 99n;
+    const yd = y + 99n;
+    const decompositions = [];
+    for (let b = 2n; b <= 10n; b += hasPowers ? 1n : 8n) {
+      if (!hasPowers && (!hasShifts && b === 2n || !hasScientific && b === 10n))
+        continue;
+      for (let e = 2n, be = b * b, kx = ceilDiv(xd, be), ky = yd / be; kx <= ky; e++, be *= b, kx = ceilDiv(kx, b), ky /= b) {
+        if (be < 1e3)
+          continue;
+        const kmax = ky > kx ? kx + 1n : kx;
+        for (let k = kx; k <= kmax; k++) {
+          if (k % b === 0n && lg(e) === lg(e + 1n))
+            continue;
+          const m = k * be;
+          const d = m > y ? y - m : m < x ? x - m : 0n;
+          const newDecomposition = [
+            k,
+            b,
+            e,
+            d,
+            lg(k) + lg(b) + lg(e) + lg(d)
+          ];
+          if (decompositions.some(
+            (decomposition) => betterOrEqual(decomposition, newDecomposition)
+          ))
+            continue;
+          filterInplace(
+            decompositions,
+            (decomposition) => !betterOrEqual(newDecomposition, decomposition)
+          );
+          decompositions.push(newDecomposition);
+        }
+      }
+    }
+    return decompositions;
+  }
+  function decomposeIntLiteral(hasScientific = false, hasPowers = true, hasShifts = true) {
+    return {
+      name: `decomposeIntLiteral(${JSON.stringify([
+        hasScientific,
+        hasPowers,
+        hasShifts
+      ])})`,
+      visit(node) {
+        let decompositions = [];
+        if (isIntLiteral(node) && (node.value <= -1e3 || node.value >= 1e3)) {
+          decompositions = decomposeInt(
+            node.value,
+            hasScientific,
+            hasPowers,
+            hasShifts
+          );
+        } else if (node.kind === "AnyIntegerLiteral") {
+          decompositions = decomposeAnyInt(
+            node.low,
+            node.high,
+            hasScientific,
+            hasPowers,
+            hasShifts
+          );
+        }
+        return decompositions.map(
+          ([k, b, e, d]) => polygolfOp(
+            "add",
+            polygolfOp("mul", int(k), polygolfOp("pow", int(b), int(e))),
+            int(d)
+          )
+        );
+      }
+    };
+  }
+  var pickAnyInt = {
+    name: "pickAnyInt",
+    visit(node) {
+      if (node.kind === "AnyIntegerLiteral") {
+        return node.low.toString().length < node.high.toString().length ? int(node.low) : int(node.high);
+      }
+    }
+  };
 
   // src/plugins/static.ts
   function golfStringListLiteral(useTextSplitWhitespace = true) {
@@ -7187,6 +7354,24 @@ ${e instanceof Error ? e.message : ""}`
     };
   }
 
+  // src/languages/lua/plugins.ts
+  var base10DecompositionToFloatLiteralAsBuiltin = {
+    name: "base10DecompositionToFloatLiteralAsBuiltin",
+    visit(node) {
+      let k = 1n;
+      let pow = node;
+      if (isPolygolfOp(node, "mul") && isIntLiteral(node.args[0])) {
+        k = node.args[0].value;
+        pow = node.args[1];
+      }
+      if (isPolygolfOp(pow, "pow") && isIntLiteral(pow.args[0], 10n) && isIntLiteral(pow.args[1])) {
+        const e = pow.args[1].value;
+        const value = k * 10n ** e;
+        return annotate(builtin2(`${k}e${e}`), integerType(value, value));
+      }
+    }
+  };
+
   // src/languages/lua/index.ts
   var luaLanguage = {
     name: "Lua",
@@ -7237,9 +7422,11 @@ ${e instanceof Error ? e.message : ""}`
             (x) => methodCall(x[0], "sub", x[1], add1(x[2]))
           ]
         ),
-        useIndexCalls(true)
+        useIndexCalls(true),
+        decomposeIntLiteral(true, true, true)
       ),
       required(
+        pickAnyInt,
         forArgvToForRange(),
         forRangeToForRangeInclusive(),
         implicitlyConvertPrintArg,
@@ -7314,7 +7501,10 @@ ${e instanceof Error ? e.message : ""}`
               isTextLiteral(c) ? text(c.value.replace("%", "%%")) : methodCall(c, "gsub", text("%%"), text("%%%%"))
             )
           ]
-        ),
+        )
+      ),
+      simplegolf(base10DecompositionToFloatLiteralAsBuiltin),
+      required(
         mapToUnaryAndBinaryOps(
           ["pow", "^"],
           ["not", "not"],
@@ -7556,7 +7746,7 @@ ${e instanceof Error ? e.message : ""}`
             ]
           ]);
         case "IntegerLiteral":
-          return e.value.toString();
+          return emitIntLiteral(e, { 10: ["", ""], 16: ["0x", ""] });
         case "FunctionCall":
           if (e.func.kind === "Identifier" && e.args.length === 1 && isTextLiteral(e.args[0])) {
             const raw = emitAsRawTextLiteral(e.args[0].value, e.func.name);
@@ -7835,7 +8025,7 @@ ${e instanceof Error ? e.message : ""}`
   function packLowDecimalList(value) {
     if (/^[\d+\n]+[\d+]$/.test(value)) {
       const nums = value.split("\n").map(Number);
-      if (nums.every((x) => x > 0 && x < 256)) {
+      if (nums.every((x) => 0 < x && x < 256)) {
         return nums.map((x) => String.fromCharCode(x)).join("");
       }
     }
@@ -8063,9 +8253,11 @@ ${e instanceof Error ? e.message : ""}`
         mapOps(
           ["argv", functionCall("commandLineParams")],
           ["argv_get", (x) => functionCall("paramStr", add1(x[0]))]
-        )
+        ),
+        decomposeIntLiteral()
       ),
       required(
+        pickAnyInt,
         forArgvToForEach,
         forArgvToForRange(),
         ...truncatingOpsPlugins,
@@ -8362,7 +8554,11 @@ ${e instanceof Error ? e.message : ""}`
         case "TextLiteral":
           return emitPythonTextLiteral(e.value);
         case "IntegerLiteral":
-          return e.value.toString();
+          return emitIntLiteral(e, {
+            10: ["", ""],
+            16: ["0x", ""],
+            36: ["int('", "',36)"]
+          });
         case "FunctionCall":
           return [
             emit4(e.func),
@@ -8486,9 +8682,11 @@ ${e instanceof Error ? e.message : ""}`
         useMultireplace(true),
         forArgvToForEach,
         useEquivalentTextOp(false, true),
-        useIndexCalls()
+        useIndexCalls(),
+        decomposeIntLiteral()
       ),
       required(
+        pickAnyInt,
         forArgvToForEach,
         removeUnusedForVar,
         useEquivalentTextOp(false, true),
@@ -8787,7 +8985,7 @@ ${e instanceof Error ? e.message : ""}`
             ]
           ]);
         case "IntegerLiteral":
-          return e.value.toString();
+          return emitIntLiteral(e, { 10: ["", ""], 16: ["0x", ""] });
         case "FunctionCall":
           if (e.func.kind === "Identifier" && e.func.name === "!")
             return [emit5(e.args[0]), "!"];
@@ -8934,9 +9132,11 @@ ${e instanceof Error ? e.message : ""}`
             )
           ]
         ),
-        useIndexCalls()
+        useIndexCalls(),
+        decomposeIntLiteral()
       ),
       required(
+        pickAnyInt,
         forArgvToForEach,
         ...truncatingOpsPlugins,
         mapOps(
@@ -9311,9 +9511,11 @@ ${e instanceof Error ? e.message : ""}`
         applyDeMorgans,
         forRangeToForRangeOneStep,
         forArgvToForEach,
-        bitShiftToMulOrDiv(false, true, true)
+        bitShiftToMulOrDiv(false, true, true),
+        decomposeIntLiteral(false, true, false)
       ),
       required(
+        pickAnyInt,
         forArgvToForEach,
         bitShiftToMulOrDiv(false, true, true),
         useEquivalentTextOp(true, false),
