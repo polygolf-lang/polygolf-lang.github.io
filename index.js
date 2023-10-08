@@ -1,7 +1,68 @@
 let worker;
 let languages;
+let editor;
 
 window.onload = () => {
+  function configureSource() {
+    const parent = document.getElementById('sourceDiv');
+    const value = localStorage.getItem('source') ?? getFibonacci();
+    const onChange = (newText) => {
+      localStorage.setItem('source', newText);
+    };
+    editor = CodeMirror.initEditor(parent, value, onChange);
+  }
+
+  function configureSelect(selectName) {
+    const select = document.getElementById(selectName + 'Select');
+    const value = localStorage.getItem(selectName);
+    if (value !== null) {
+      select.value = value;
+    }
+    select.onchange = () => {
+      localStorage.setItem(selectName, select.value);
+    };
+  }
+
+  function configureCheckBox(checkBoxName) {
+    const checkBox = document.getElementById(checkBoxName + 'CheckBox');
+    const value = localStorage.getItem(checkBoxName);
+    if (value !== null) {
+      checkBox.checked = value === 'true';
+    }
+    checkBox.onchange = () => {
+      localStorage.setItem(checkBoxName, checkBox.checked);
+    };
+  }
+
+  function configureTextArea(textAreaName) {
+    const textArea = document.getElementById(textAreaName);
+    const height = localStorage.getItem(textAreaName + 'Height');
+    if (height !== null) {
+      textArea.style.height = height;
+    }
+    new ResizeObserver(entries => {
+      for (let entry of entries) {
+        localStorage.setItem(entry.target.id + 'Height', entry.target.offsetHeight + 'px');
+      }
+    }).observe(textArea);
+  }
+
+  function configureTheme() {
+    const themeSelect = document.getElementById('themeSelect');
+    themeSelect.value = getTheme();
+    themeSelect.onchange = () => {
+      const theme = themeSelect.value;
+      localStorage.setItem('theme', theme);
+      setTheme(theme);
+    };
+  }
+
+  configureSource();
+  configureSelect('objective');
+  configureCheckBox('getAllVariants');
+  configureTextArea('result');
+  configureTheme();
+
   worker = new Worker("worker.js");
 
   worker.onmessage = (e) => {
@@ -12,7 +73,7 @@ window.onload = () => {
       languageSelect.add(new Option(language));
     }
 
-    configureLocalStorage();
+    configureSelect('language');
 
     worker.onmessage = (e) => {
       renderTabs(e.data);
@@ -31,68 +92,12 @@ function setTheme(theme) {
 
 setTheme(getTheme());
 
-function configureLocalStorage() {
-  {
-    const source = document.getElementById('source');
-    source.value = localStorage.getItem('source') ?? getFibonacci();
-    source.oninput = () => {
-      localStorage.setItem('source', source.value);
-    };
-  }
-
-  for (const selectName of ['language', 'objective']) {
-    const select = document.getElementById(selectName + 'Select');
-    const value = localStorage.getItem(selectName);
-    if (value !== null) {
-      select.value = value;
-    }
-    select.onchange = () => {
-      localStorage.setItem(selectName, select.value);
-    };
-  }
-
-  {
-    const checkBox = document.getElementById('getAllVariantsCheckBox');
-    const value = localStorage.getItem('getAllVariants');
-    if (value !== null) {
-      checkBox.checked = value === 'true';
-    }
-    checkBox.onchange = () => {
-      localStorage.setItem('getAllVariants', checkBox.checked);
-    };
-  }
-
-  const resizeObserver = new ResizeObserver(entries => {
-    for (let entry of entries) {
-      localStorage.setItem(entry.target.id + 'Height', entry.target.offsetHeight + 'px');
-    }
-  });
-  for (const textareaName of ['source', 'result']) {
-    const textArea = document.getElementById(textareaName);
-    const height = localStorage.getItem(textareaName + 'Height');
-    if (height !== null) {
-      textArea.style.height = height;
-    }
-    resizeObserver.observe(textArea);
-  }
-
-  {
-    const themeSelect = document.getElementById('themeSelect');
-    themeSelect.value = getTheme();
-    themeSelect.onchange = () => {
-      const theme = themeSelect.value;
-      localStorage.setItem('theme', theme);
-      setTheme(theme);
-    };
-  }
-}
-
 function generate() {
   const generateButton = document.getElementById('generate');
   generateButton.disabled = true;
   generateButton.textContent = 'Generating...';
 
-  const source = document.getElementById('source').value;
+  const source = editor.state.doc.toString();
 
   const options = {
     level: 'full',
@@ -190,9 +195,9 @@ function renderResult(compilationResult) {
 }
 
 function setSource(value) {
-  const source = document.getElementById('source');
-  source.value = value;
-  source.oninput();
+  editor.dispatch({
+    changes: { from: 0, to: editor.state.doc.length, insert: value }
+  });
 }
 
 function groupBy(sequence, keyFn) {
