@@ -1,4 +1,4 @@
-importScripts("polygolf.js");
+importScripts("polygolf.bundle.js");
 
 // `postMessage` can't serialize `Language` object, so we only send names
 postMessage({ languages: languages.map(language => language.name) });
