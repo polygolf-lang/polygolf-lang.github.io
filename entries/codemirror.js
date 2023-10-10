@@ -1,7 +1,9 @@
-import { EditorView, lineNumbers, highlightSpecialChars, drawSelection, highlightActiveLine, keymap } from '@codemirror/view';
+import { EditorView, highlightActiveLineGutter, lineNumbers, highlightSpecialChars, drawSelection, highlightActiveLine, keymap } from '@codemirror/view';
 import { highlightSelectionMatches } from '@codemirror/search';
-import { syntaxHighlighting, defaultHighlightStyle, bracketMatching } from '@codemirror/language';
+import { foldGutter, syntaxHighlighting, defaultHighlightStyle, bracketMatching, foldKeymap } from '@codemirror/language';
 import { history, defaultKeymap, historyKeymap, indentLess, insertTab } from '@codemirror/commands';
+import { autocompletion, completionKeymap } from '@codemirror/autocomplete';
+import { polygolf } from 'codemirror-lang-polygolf';
 
 export function initEditor(parent, initialValue, onChange) {
   return new EditorView({
@@ -10,22 +12,34 @@ export function initEditor(parent, initialValue, onChange) {
       lineNumbers(),
       highlightSpecialChars(),
       history(),
+      foldGutter({
+        openText: '▾',
+        closedText: '▸',
+      }),
       drawSelection(),
       syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+      polygolf(),
+      autocompletion(),
       bracketMatching(),
       highlightActiveLine(),
+      highlightActiveLineGutter(),
       highlightSelectionMatches(),
       keymap.of([
         ...defaultKeymap,
         ...historyKeymap,
+        ...foldKeymap,
+        ...completionKeymap,
         { key: 'Tab', run: insertTab, shift: indentLess },
       ]),
       EditorView.lineWrapping,
+      EditorView.theme({
+        "&.cm-editor.cm-focused": { outline: "none" }
+      }, { dark: false }),
       EditorView.updateListener.of((v) => {
         if (v.docChanged) {
           onChange(v.state.doc.toString());
         }
-      })
+      }),
     ],
     parent
   });
