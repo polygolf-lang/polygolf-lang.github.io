@@ -9,7 +9,7 @@ window.onload = () => {
     const onChange = (newText) => {
       localStorage.setItem('source', newText);
     };
-    editor = CodeMirror.initEditor(parent, value, onChange);
+    editor = CodeMirror.initEditor(parent, value, getTheme(), onChange);
   }
 
   function configureSelect(selectName) {
@@ -54,6 +54,7 @@ window.onload = () => {
       const theme = themeSelect.value;
       localStorage.setItem('theme', theme);
       setTheme(theme);
+      editor.setTheme(theme);
     };
   }
 
