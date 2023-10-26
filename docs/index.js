@@ -4,6 +4,7 @@ let editor;
 
 window.onload = () => {
   const urlParams = new URLSearchParams(window.location.search);
+  history.pushState({}, null, window.location.origin + window.location.pathname);
 
   function configureSource() {
     const parent = document.getElementById('sourceDiv');
