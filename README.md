@@ -1,8 +1,8 @@
 ## PolyGolf Playground
 
-Compiles [PolyGolf](https://github.com/jared-hughes/polygolf) to [code.golf](https://code.golf) languages in your browser.
+Compiles [PolyGolf](https://github.com/polygolf-lang/polygolf) to [code.golf](https://code.golf) languages in your browser.
 
-Link: [btnlq.github.io/polygolf-web/](https://polygolf-lang.github.io/polygolf-playground/)
+Link: [polygolf-lang.github.io/polygolf-playground/](https://polygolf-lang.github.io/polygolf-playground/)
 
 ### Development
 
