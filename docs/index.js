@@ -3,9 +3,12 @@ let languages;
 let editor;
 
 window.onload = () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  history.replaceState({}, null, window.location.origin + window.location.pathname);
+
   function configureSource() {
     const parent = document.getElementById('sourceDiv');
-    const value = localStorage.getItem('source') ?? getFibonacci();
+    const value = urlParams.get("source") ?? localStorage.getItem('source') ?? getFibonacci();
     const onChange = (newText) => {
       localStorage.setItem('source', newText);
     };
@@ -14,7 +17,7 @@ window.onload = () => {
 
   function configureSelect(selectName) {
     const select = document.getElementById(selectName + 'Select');
-    const value = localStorage.getItem(selectName);
+    const value = urlParams.get(selectName) ?? localStorage.getItem(selectName);
     if (value !== null) {
       select.value = value;
     }
@@ -25,7 +28,7 @@ window.onload = () => {
 
   function configureCheckBox(checkBoxName) {
     const checkBox = document.getElementById(checkBoxName + 'CheckBox');
-    const value = localStorage.getItem(checkBoxName);
+    const value = urlParams.get(checkBoxName) ?? localStorage.getItem(checkBoxName);
     if (value !== null) {
       checkBox.checked = value === 'true';
     }
@@ -93,20 +96,37 @@ function setTheme(theme) {
 
 setTheme(getTheme());
 
+
+function getSource(){
+  return editor.state.doc.toString();
+}
+
+function getObjective(){
+  return document.getElementById('objectiveSelect').value;
+}
+
+function getIsAllVariants(){
+  return document.getElementById('getAllVariantsCheckBox').checked;
+}
+
+function getLanguageName(){
+  return document.getElementById('languageSelect').value;
+}
+
 function generate() {
   const generateButton = document.getElementById('generate');
   generateButton.disabled = true;
   generateButton.textContent = 'Generating...';
 
-  const source = editor.state.doc.toString();
+  const source = getSource();
 
   const options = {
     level: 'full',
-    objective: document.getElementById('objectiveSelect').value,
-    getAllVariants: document.getElementById('getAllVariantsCheckBox').checked
+    objective: getObjective(),
+    getAllVariants: getIsAllVariants()
   };
 
-  const languageName = document.getElementById('languageSelect').value;
+  const languageName = getLanguageName();
   const generatedLanguages = languageName === 'all' ? languages : [languageName];
 
   worker.postMessage({ source, options, generatedLanguages });
@@ -212,6 +232,10 @@ function groupBy(sequence, keyFn) {
     }
   }
   return map;
+}
+
+function copyLink(){
+  navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?source=${encodeURIComponent(getSource())}&language=${getLanguageName()}&objective=${getObjective()}&getAllVariants=${getIsAllVariants()}`);
 }
 
 function download() {
