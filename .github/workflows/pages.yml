@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: ["actions"]
+  pull_request:
+    branches: ["actions"]
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Polygolf
+        uses: actions/checkout@v4
+        with:
+          repository: polygolf-lang/polygolf
+
+      - name: Checkout playground
+        uses: actions/checkout@v4
+        with:
+          ref: actions
+          path: playground
+
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          cache: "npm"
+
+      - name: Build Polygolf
+        run: |
+          npm install --save-exact --save-dev esbuild
+          npm run build
+          ./node_modules/.bin/esbuild playground/src/polygolf.ts --bundle --outfile=_site/polygolf.bundle.js
+          rm -f playground/src/polygolf.ts
+
+      - name: Build Codemirror
+        run: |
+          npm install codemirror @codemirror/theme-one-dark codemirror-lang-polygolf rollup @rollup/plugin-node-resolve @rollup/plugin-terser
+          node_modules/.bin/rollup playground/src/codemirror.js -f iife -n CodeMirror -o _site/codemirror.bundle.js -p @rollup/plugin-node-resolve -p @rollup/plugin-terser
+          rm -f playground/src/codemirror.js
+
+      - name: Copy static files
+        run: cp playground/src _site -f -R
+
+      - name: Deploy
+        uses: actions/upload-pages-artifact@v2
+
+  deploy:
+    needs: build
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2

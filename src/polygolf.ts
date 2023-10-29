@@ -1,6 +1,6 @@
-import compile from "./common/compile";
-import { getObjectiveFunc } from "./common/objective";
-import languages from "./languages/languages";
+import compile from "../../src/common/compile";
+import { getObjectiveFunc } from "../../src/common/objective";
+import languages from "../../src/languages/languages";
 
 globalThis.compile = compile;
 globalThis.getObjectiveFunc = getObjectiveFunc;
@@ -18,9 +18,9 @@ globalThis.Buffer = {
       const code = s.charCodeAt(i);
       if (code > 0x7f) {
         length += code > 0x7ff ? 2 : 1;
-        if (code >= 0xDC00 && code <= 0xDFFF) i--; // surrogate
+        if (code >= 0xdc00 && code <= 0xdfff) i--; // surrogate
       }
     }
     return length;
-  }
+  },
 };
