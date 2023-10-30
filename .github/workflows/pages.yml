@@ -43,7 +43,7 @@ jobs:
           rm -f playground/src/codemirror.js
 
       - name: Copy static files
-        run: cp playground/src _site -f -R
+        run: cp playground/src/. _site -f -R
 
       - name: Deploy
         uses: actions/upload-pages-artifact@v2
