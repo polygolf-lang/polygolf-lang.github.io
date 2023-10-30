@@ -123,7 +123,10 @@ function generate() {
   const options = {
     level: 'full',
     objective: getObjective(),
-    getAllVariants: getIsAllVariants()
+    getAllVariants: getIsAllVariants(),
+    codepointRange: [1, Infinity],
+    restrictFrontend: true,
+    skipTypecheck: false,
   };
 
   const languageName = getLanguageName();
