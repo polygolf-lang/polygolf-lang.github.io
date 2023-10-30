@@ -188,7 +188,7 @@ function renderResult(compilationResult) {
   if (typeof result !== 'string') {
     let output = result.toString();
 
-    if (compilationResult.language === undefined) { // Fatal error
+    if (compilationResult.location === undefined) { // Fatal error
       const stack = result.stack;
       if (stack != null) {
         output += '\n\n' + stack;
