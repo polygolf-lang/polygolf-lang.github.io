@@ -158,6 +158,7 @@ function renderTabs(results) {
     button.textContent = compilationResult.language;
     if (compilationResult.length !== undefined) {
       button.innerHTML += ` <sup>${compilationResult.length}</sup>`;
+    }
     button.type = 'button';
     button.setAttribute('data-bs-toggle', 'tab');
 
