@@ -152,14 +152,9 @@ function renderTabs(results) {
     button.className = 'nav-link';
     if (first)
       button.classList.add('active');
-    if (typeof compilationResult.result !== 'string' && compilationResult.location === undefined) {
-      button.textContent = 'Fatal error';
-    } else {
-      button.textContent = compilationResult.language;
-      if (compilationResult.length !== undefined) {
-        button.innerHTML += ` <sup>${compilationResult.length}</sup>`;
-      }
-    }
+    button.textContent = compilationResult.language;
+    if (compilationResult.length !== undefined) {
+      button.innerHTML += ` <sup>${compilationResult.length}</sup>`;
     button.type = 'button';
     button.setAttribute('data-bs-toggle', 'tab');
 
@@ -192,14 +187,14 @@ function renderResult(compilationResult) {
   if (typeof result !== 'string') {
     let output = result.toString();
 
-    if (compilationResult.location === undefined) { // Fatal error
+    if (compilationResult.language === "Fatal error") { // Fatal error
       const stack = result.stack;
       if (stack != null) {
         output += '\n\n' + stack;
       }
-    } else { // PolygolfError
+    } else { // language error
       const location = compilationResult.location;
-      if (location !== null) {
+      if (location != null) {
         const startLine = location.line === 0 ? 0 : location.line - 2;
         output += '\n\n' +
           lastCompilationResults.source

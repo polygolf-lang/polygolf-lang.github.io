@@ -26,7 +26,7 @@ onmessage = (event) => {
       }
     }
   } catch (e) {
-    compilationResults = [{ result: e }];
+    compilationResults = [{ language: "Fatal error", result: e }];
   }
 
   data.results = compilationResults;
