@@ -97,19 +97,19 @@ function setTheme(theme) {
 setTheme(getTheme());
 
 
-function getSource(){
+function getSource() {
   return editor.state.doc.toString();
 }
 
-function getObjective(){
+function getObjective() {
   return document.getElementById('objectiveSelect').value;
 }
 
-function getIsAllVariants(){
+function getIsAllVariants() {
   return document.getElementById('getAllVariantsCheckBox').checked;
 }
 
-function getLanguageName(){
+function getLanguageName() {
   return document.getElementById('languageSelect').value;
 }
 
@@ -152,9 +152,13 @@ function renderTabs(results) {
     button.className = 'nav-link';
     if (first)
       button.classList.add('active');
-    button.textContent = compilationResult.language ?? 'Fatal error';
-    if (compilationResult.length !== undefined) {
-      button.innerHTML += ` <sup>${compilationResult.length}</sup>`;
+    if (typeof compilationResult.result !== 'string' && compilationResult.location === undefined) {
+      button.textContent = 'Fatal error';
+    } else {
+      button.textContent = compilationResult.language;
+      if (compilationResult.length !== undefined) {
+        button.innerHTML += ` <sup>${compilationResult.length}</sup>`;
+      }
     }
     button.type = 'button';
     button.setAttribute('data-bs-toggle', 'tab');
