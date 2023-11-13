@@ -127,6 +127,7 @@ function generate() {
     codepointRange: [1, Infinity],
     restrictFrontend: true,
     skipTypecheck: false,
+    skipPlugins: []
   };
 
   const languageName = getLanguageName();
