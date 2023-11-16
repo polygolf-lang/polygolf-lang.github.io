@@ -138,6 +138,8 @@ function generate() {
 
 let lastCompilationResults;
 
+let lastRenderedCompilationResult;
+
 function renderTabs(results) {
 
   console.log(results);
@@ -146,15 +148,20 @@ function renderTabs(results) {
   const resultTabs = document.getElementById('resultTabs');
   resultTabs.innerHTML = '';
 
-  let first = true;
+  for(const compilationResult of results.results){
+    compilationResult.index = results.results.filter(x => x.language === compilationResult.language).index(compilationResult);
+  }
+
+  lastRenderedCompilationResult ??= {language: results.results[0].language, index: 0}
 
   for (const compilationResult of results.results) {
+    const shouldActivate = lastRenderedCompilationResult.language === compilationResult.language && lastRenderedCompilationResult.index === compilationResult.index;
     const li = document.createElement('li');
     li.className = 'nav-item';
 
     const button = document.createElement('button');
     button.className = 'nav-link';
-    if (first)
+    if (shouldActivate)
       button.classList.add('active');
     button.textContent = compilationResult.language;
     if (compilationResult.length !== undefined) {
@@ -164,13 +171,11 @@ function renderTabs(results) {
     button.setAttribute('data-bs-toggle', 'tab');
 
     button.addEventListener('shown.bs.tab', () => renderResult(compilationResult));
-    if (first)
+    if (shouldActivate)
       renderResult(compilationResult);
 
     li.appendChild(button);
     resultTabs.appendChild(li);
-
-    first = false;
   }
 
   const generateButton = document.getElementById('generate');
