@@ -178,12 +178,7 @@ function renderTabs(results) {
 }
 
 function renderResult(compilationResult) {
-  // TODO: show warnings and history
-
-  const warnings = compilationResult.warnings; // Error[]
-  if (warnings != null && warnings.length !== 0) {
-    console.log(warnings);
-  }
+  // TODO: show warnings and history in a dedicated control
 
   // const history = compilationResult.history; // [number, string][]
 
@@ -213,6 +208,11 @@ function renderResult(compilationResult) {
     }
 
     result = output;
+  }
+
+  const warnings = compilationResult.warnings; // Error[]
+  if (warnings != null && warnings.length !== 0) {
+    result += "\n\nWarnings:\n" + warnings.map((x) => x.message).join("\n")
   }
 
   document.getElementById('result').value = result;
