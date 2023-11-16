@@ -3,6 +3,10 @@ let languages;
 let editor;
 
 window.onload = () => {
+  window.onkeydown = e => (e.ctrlKey || e.metaKey) && e.key == 'Enter'
+    ? generate()
+    : undefined;
+
   const urlParams = new URLSearchParams(window.location.search);
   history.replaceState({}, null, window.location.origin + window.location.pathname);
 
