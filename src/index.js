@@ -4,7 +4,9 @@ let editor;
 
 window.onload = () => {
   const urlParams = new URLSearchParams(window.location.search);
-  history.replaceState({}, null, window.location.origin + window.location.pathname);
+  if (urlParams.size !== 0) {
+    history.replaceState({}, null, window.location.origin + window.location.pathname);
+  }
 
   function configureSource() {
     const parent = document.getElementById('sourceDiv');
@@ -148,22 +150,32 @@ function renderTabs(results) {
   const resultTabs = document.getElementById('resultTabs');
   resultTabs.innerHTML = '';
 
-  for(const compilationResult of results.results){
-    compilationResult.index = results.results.filter(x => x.language === compilationResult.language).index(compilationResult);
-  }
+  const languagesResults = groupBy(results.results, x => x.language);
 
-  lastRenderedCompilationResult ??= {language: results.results[0].language, index: 0}
+  languagesResults.forEach(languageResults => {
+    languageResults.forEach((languageResult, index) => {
+      languageResult.index = index;
+      languageResult.hasVariants = languageResults.length > 1;
+    });
+  });
+
+  const languageResults = languagesResults.get(lastRenderedCompilationResult?.language) ?? languagesResults.values().next().value;
+  const renderedCompilationResult = languageResults[lastRenderedCompilationResult?.index] ?? languageResults[0];
 
   for (const compilationResult of results.results) {
-    const shouldActivate = lastRenderedCompilationResult.language === compilationResult.language && lastRenderedCompilationResult.index === compilationResult.index;
+    const shouldActivate = renderedCompilationResult === compilationResult;
     const li = document.createElement('li');
     li.className = 'nav-item';
 
     const button = document.createElement('button');
     button.className = 'nav-link';
-    if (shouldActivate)
+    if (shouldActivate) {
       button.classList.add('active');
+    }
     button.textContent = compilationResult.language;
+    if (compilationResult.hasVariants) {
+      button.innerHTML += `<sub>${compilationResult.index + 1}</sub>`;
+    }
     if (compilationResult.length !== undefined) {
       button.innerHTML += ` <sup>${compilationResult.length}</sup>`;
     }
@@ -171,8 +183,9 @@ function renderTabs(results) {
     button.setAttribute('data-bs-toggle', 'tab');
 
     button.addEventListener('shown.bs.tab', () => renderResult(compilationResult));
-    if (shouldActivate)
+    if (shouldActivate) {
       renderResult(compilationResult);
+    }
 
     li.appendChild(button);
     resultTabs.appendChild(li);
@@ -189,7 +202,9 @@ function renderResult(compilationResult) {
   // const history = compilationResult.history; // [number, string][]
 
   let result = compilationResult.result;
-  if (typeof result !== 'string') {
+  if (typeof result === 'string') {
+    lastRenderedCompilationResult = compilationResult;
+  } else {
     let output = result.toString();
 
     if (compilationResult.language === "Fatal error") { // Fatal error
@@ -243,7 +258,7 @@ function groupBy(sequence, keyFn) {
   return map;
 }
 
-function copyLink(){
+function copyLink() {
   navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?source=${encodeURIComponent(getSource())}&language=${getLanguageName()}&objective=${getObjective()}&getAllVariants=${getIsAllVariants()}`);
 }
 
@@ -262,12 +277,10 @@ function download() {
 
   const zip = new JSZip();
   zip.file('!source.polygolf', lastCompilationResults.source);
-  groupBy(compilationResults, x => x.language).forEach((results, languageName) => {
-    results.forEach((compilationResult, idx) => {
-      const name = `${languageName}${results.length === 1 ? '' : ' #' + (idx + 1)}.${compilationResult.extension}`;
-      zip.file(name, compilationResult.result);
-    });
-  });
+  for (const compilationResult of compilationResults) {
+    const name = `${compilationResult.language}${compilationResult.hasVariants ? ' #' + (compilationResult.index + 1) : ''}.${compilationResult.extension}`;
+    zip.file(name, compilationResult.result);
+  }
 
   zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })
     .then(blob => saveAs(blob, 'PolyGolf.zip'));
