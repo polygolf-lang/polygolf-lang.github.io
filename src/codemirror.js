@@ -32,7 +32,7 @@ export function initEditor(parent, initialValue, theme, onChange) {
       highlightActiveLineGutter(),
       highlightSelectionMatches(),
       keymap.of([
-        ...defaultKeymap,
+        ...defaultKeymap.filter(x => x.key !== "Mod-Enter"),
         ...historyKeymap,
         ...foldKeymap,
         ...completionKeymap,
