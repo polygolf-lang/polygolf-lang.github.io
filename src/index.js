@@ -293,8 +293,8 @@ function download() {
 function getFibonacci() {
   return `$a:0..832040 <- 0;
 $b:0..1346269 <- 1;
-for $i 0 31 {
-  println_int $a;
+for $i 31 {
+  println $a;
   { % temp variable
     $t:0..1346269 <- ($a + $b):0..1346269;
     $a <- $b:0..832040;
@@ -321,7 +321,7 @@ for $i 0 12 {
   println (.. "On the " (list_get $ordinals $i)
     " day of Christmas\\nMy true love sent to me");
   for $j (11 - $i) 12 {
-    println (list_get $days $j);
+    println ($days @ $j);
   };
 };`;
 }
