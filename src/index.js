@@ -318,7 +318,7 @@ $days <- (list
   "Three French Hens," "Two Turtle Doves, and" "A Partridge in a Pear Tree.\\n"
 );
 for $i 0 12 {
-  println (.. "On the " (list_get $ordinals $i)
+  println (.. "On the " ($ordinals @ $i)
     " day of Christmas\\nMy true love sent to me");
   for $j (11 - $i) 12 {
     println ($days @ $j);
