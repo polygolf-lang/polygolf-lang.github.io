@@ -89,6 +89,10 @@ window.onload = () => {
       renderTabs(e.data);
     };
   }
+
+  if (urlParams.get('compile') === 'true'){
+    generate();
+  }
 }
 
 function getTheme() {
@@ -263,7 +267,7 @@ function groupBy(sequence, keyFn) {
 }
 
 function copyLink() {
-  navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?source=${encodeURIComponent(getSource())}&language=${getLanguageName()}&objective=${getObjective()}&getAllVariants=${getIsAllVariants()}`);
+  navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?source=${encodeURIComponent(getSource())}&language=${getLanguageName()}&objective=${getObjective()}&getAllVariants=${getIsAllVariants()}&compile=true`);
 }
 
 function download() {

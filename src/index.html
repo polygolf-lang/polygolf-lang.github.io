@@ -20,6 +20,17 @@
     .btn-outline-secondary {
       color: var(--bs-body-color);
     }
+
+    #share-btn + span {
+        opacity: 0;
+        transition: all 2s;
+    }
+
+    #share-btn:active + span {
+        opacity: 1;
+        padding-left: 1rem;
+        transition: all 0s;
+    }
   </style>
 </head>
 
@@ -79,7 +90,7 @@
         <button class="btn btn-outline-secondary col" onclick="download();">Download all</button>
       </div>
       <div class="col-12">
-        <button class="btn btn-outline-secondary col" onclick="copyLink();">Share</button>
+        <button id="share-btn" class="btn btn-outline-secondary col" onclick="copyLink();">Share</button><span>Url copied to clipboard</span>
       </div>
     </div>
     <div class="row">
