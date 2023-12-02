@@ -85,14 +85,14 @@ window.onload = () => {
 
     configureSelect('language');
 
+    if (urlParams.get('compile') === 'true') {
+      generate();
+    }
+
     worker.onmessage = (e) => {
       renderTabs(e.data);
     };
-  }
-
-  if (urlParams.get('compile') === 'true'){
-    generate();
-  }
+  }  
 }
 
 function getTheme() {
