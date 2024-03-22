@@ -321,7 +321,7 @@ $days <- (list
   "Six Geese-a-Laying," "Five Gold Rings," "Four Calling Birds,"
   "Three French Hens," "Two Turtle Doves, and" "A Partridge in a Pear Tree.\\n"
 );
-for $i 0 12 {
+for $i 12 {
   println (.. "On the " ($ordinals @ $i)
     " day of Christmas\\nMy true love sent to me");
   for $j (11 - $i) 12 {
@@ -335,8 +335,8 @@ function getCodeGolfTemplate() {
 println "Hello, World!";
 
 % Looping
-for $i 0 10 {
-  println_int $i;
+for $i 10 {
+  println $i;
 };
 
 % Accessing arguments
